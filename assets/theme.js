@@ -1,4 +1,4 @@
-// Desvelo · comportamiento del tema (sin dependencias)
+// Duraznito · comportamiento del tema (sin dependencias)
 // Modo Shopify: usa el carrito real (/cart/*.js). Modo vista previa: bolsa en localStorage + desvelo-productos.json.
 document.documentElement.classList.add('js');
 (() => {
@@ -111,7 +111,7 @@ document.documentElement.classList.add('js');
     const items = await Bolsa.leer();
     const cuerpo = $('[data-bolsa-cuerpo]'), pie = $('[data-bolsa-pie]');
     if (!items.length) {
-      cuerpo.innerHTML = `<div class="bolsa__vacia">${MONO}<p>Todavía nada.<br>Y la noche es larga.</p><a class="boton" href="${SHOPIFY ? '/collections/all' : 'coleccion.html'}">Explorar la tienda</a></div>`;
+      cuerpo.innerHTML = `<div class="bolsa__vacia">${MONO}<p>Todavía nada.<br>Hay mucha fruta jugosa para elegir.</p><a class="boton" href="${SHOPIFY ? '/collections/all' : 'coleccion.html'}">Explorar la tienda</a></div>`;
       pie.innerHTML = '';
       return;
     }
@@ -240,7 +240,7 @@ document.documentElement.classList.add('js');
   // ————————————————— Aviso de edad (+18), una vez —————————————————
   if (!document.body.hasAttribute('data-sin-edad') && leer('desvelo-18') !== 'si' && !new URLSearchParams(location.search).has('mayor')) {
     document.body.insertAdjacentHTML('beforeend', `<div class="edad" role="dialog" aria-modal="true" aria-labelledby="edad-t" data-edad>
-      <div class="edad__caja"><svg class="edad__logo" viewBox="3 -690 2599 713.1" role="img" aria-label="Desvelo"><use href="${BASE}desvelo-sprite.svg?v=dpunto#wordmark" x="3" y="-690" width="2599" height="713.1" fill="currentColor"/></svg><p class="marca-titulo" id="edad-t">¿tienes 18 o más?</p><p>Desvelo vende juguetes y lencería para adultos. Confirma tu edad para entrar.</p>
+      <div class="edad__caja"><svg class="edad__logo" viewBox="3 -690 2599 713.1" role="img" aria-label="Duraznito"><use href="${BASE}desvelo-sprite.svg?v=dpunto#wordmark" x="3" y="-690" width="2599" height="713.1" fill="currentColor"/></svg><p class="marca-titulo" id="edad-t">¿tienes 18 o más?</p><p>Duraznito vende juguetes y lencería para adultos. Confirma tu edad para entrar.</p>
       <div class="edad__acciones"><a class="boton boton--claro" href="https://www.google.cl">No, salir</a><button class="boton" type="button" data-edad-si>Sí, entrar</button></div></div></div>`);
     $('[data-edad-si]').addEventListener('click', () => { guardar('desvelo-18', 'si'); $('[data-edad]').remove(); });
   }
@@ -432,7 +432,7 @@ document.documentElement.classList.add('js');
       document.body.append(nav);
       nav.setAttribute('role', 'dialog'); nav.setAttribute('aria-modal', 'true');
       const logo = $('.brand-logo img');
-      nav.insertAdjacentHTML('afterbegin', `<div class="mobile-nav__cabeza">${logo ? `<img src="${logo.getAttribute('src')}" alt="Desvelo" class="mobile-nav__logo">` : ''}<button class="mobile-nav__cerrar" type="button" data-nav-cerrar aria-label="Cerrar menú"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`);
+      nav.insertAdjacentHTML('afterbegin', `<div class="mobile-nav__cabeza">${logo ? `<img src="${logo.getAttribute('src')}" alt="Duraznito" class="mobile-nav__logo">` : ''}<button class="mobile-nav__cerrar" type="button" data-nav-cerrar aria-label="Cerrar menú"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`);
       const veloNav = document.createElement('div'); veloNav.className = 'mobile-nav__velo'; document.body.append(veloNav);
       const fijar = (a) => {
         nav.classList.toggle('is-open', a); veloNav.classList.toggle('is-visible', a);

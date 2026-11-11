@@ -1,4 +1,4 @@
-// Desvelo · motor de la VISTA PREVIA (no va a Shopify: allá lo hacen las plantillas Liquid).
+// Duraznito · motor de la VISTA PREVIA (no va a Shopify: allá lo hacen las plantillas Liquid).
 // Arma producto.html?p=<slug> y coleccion.html?c=<categoria> desde desvelo-productos.json.
 (() => {
   const D = window.Desvelo;
@@ -47,7 +47,7 @@
     const comps = (p.pack ? [] : p.complementos).map((s) => productos.find((x) => x.slug === s)).filter(Boolean);
     const relacionados = productos.filter((x) => x.categoria === p.categoria && x.slug !== p.slug).sort((a, b) => (a.stock.estado === 'agotado') - (b.stock.estado === 'agotado') || (b.galeria.length > 0) - (a.galeria.length > 0) || b.precio - a.precio).slice(0, 4);
     const agotado = p.stock.estado === 'agotado';
-    document.title = `${p.nombre} · Desvelo`;
+    document.title = `${p.nombre} · Duraznito`;
     const galeria = p.galeria.length ? p.galeria : [null];
     const varias = galeria.length > 1;
     const stockTxt = { pocos: `Quedan ${p.stock.unidades} unidades`, consultar: 'Confirmamos stock antes de despachar', agotado: 'Agotado por ahora' }[p.stock.estado];
@@ -108,11 +108,11 @@
           <div class="acordeon">
             ${p.elegimos ? `<div class="elegimos">${D.MONO}<p><b>Por qué lo elegimos</b>${esc(p.elegimos)}</p></div>` : ''}
             <details><summary>Cuidado</summary><div class="acordeon__cuerpo"><p>${cuidado}</p></div></details>
-            <details><summary>Cómo llega</summary><div class="acordeon__cuerpo"><p>Como cualquier compra online: envuelto en negro, con la etiqueta del courier y a nombre de una empresa. Nada dice Desvelo ni lo que hay dentro. Ni el conserje se entera, y mira que el conserje se entera de todo. Despachamos a todo Chile y el costo se calcula al pagar.</p></div></details>
+            <details><summary>Cómo llega</summary><div class="acordeon__cuerpo"><p>Como cualquier compra online: envuelto en negro, con la etiqueta del courier y a nombre de una empresa. Nada dice Duraznito ni lo que hay dentro. Ni el conserje se entera, y mira que el conserje se entera de todo. Despachamos a todo Chile y el costo se calcula al pagar.</p></div></details>
             <details><summary>Ficha</summary><div class="acordeon__cuerpo"><dl><dt>Categoría</dt><dd>${cat.nombre}</dd><dt>Código</dt><dd>${p.sku}</dd><dt>Material y medidas</dt><dd>Se confirman con la ficha del proveedor antes de publicar.</dd></dl></div></details>
           </div>
 
-          <div class="consulta"><span><b>¿Dudas antes de comprar?</b>Te respondemos con total discreción.</span><a class="boton boton--claro" href="mailto:${CFG().contacto || 'contacto.desvelo@gmail.com'}?subject=${encodeURIComponent('Consulta: ' + p.nombre)}">Preguntar</a></div>
+          <div class="consulta"><span><b>¿Dudas antes de comprar?</b>Te respondemos con total discreción.</span><a class="boton boton--claro" href="mailto:${CFG().contacto || 'hola@duraznito.cl'}?subject=${encodeURIComponent('Consulta: ' + p.nombre)}">Preguntar</a></div>
         </div>
       </div>
 
@@ -200,13 +200,13 @@
 
   // ————————— Reels (fotos propias en movimiento; en Shopify se suben videos reales) —————————
   const ESCENAS = { vibradores: ['escena-velador-manana', 'escena-look-cama'], consoladores: ['escena-noche-satin', 'textura-encaje-noche'], 'para-el': ['paquete-puerta', 'escena-bano-cuidado'], anal: ['escena-noche-satin', 'escena-pareja-remoto'], bondage: ['escena-look-cama', 'textura-encaje-noche'], lenceria: ['escena-cama-lenceria', 'textura-encaje-noche'], packs: ['escena-regalo', 'paquete-puerta'] };
-  const TITULOS = ['de cerca.', 'en su lugar.', 'para esta noche.', 'a esta hora.', 'sin apuro.'];
+  const TITULOS = ['de cerca.', 'en su lugar.', 'para hoy.', 'con ganas.', 'sin apuro.'];
   function reelsHTML(p, productos) {
     const fotos = [...p.galeria.map((g) => `desvelo-${g}.jpg`), ...ESCENAS[p.categoria].map((e) => `desvelo-${e}.jpg`), 'desvelo-paquete-puerta.jpg'];
     const unicos = [...new Set(fotos)].slice(0, 5);
     if (unicos.length < 3) return '';
     const mini = foto(p);
-    return `<section class="seccion--compacta page-width"><div class="seccion-cabeza"><div class="seccion-cabeza__textos"><p class="seccion-cabeza__que">Reels</p><h2>Míralo en la casa Desvelo.</h2><p class="seccion-cabeza__porque">Cómo se ve, cómo llega y dónde vive.</p></div></div>
+    return `<section class="seccion--compacta page-width"><div class="seccion-cabeza"><div class="seccion-cabeza__textos"><p class="seccion-cabeza__que">Reels</p><h2>Míralo en la casa Duraznito.</h2><p class="seccion-cabeza__porque">Cómo se ve, cómo llega y dónde vive.</p></div></div>
       <div class="reels" data-reels>${unicos.map((f, i) => `<div class="reel"><span class="reel__barra"></span><img src="${D.BASE}${f}" alt="" loading="lazy"><p class="reel__titulo">${f.includes('paquete') ? 'así llega. nadie se entera.' : TITULOS[i % TITULOS.length]}</p>
         <div class="reel__prod vidrio">${mini ? `<img src="${mini}" alt="">` : ''}<span><b>${esc(p.nombre)}</b>${D.plata(p.precio)}</span><button class="boton" type="button" data-agregar data-slug="${p.slug}">Agregar</button></div></div>`).join('')}</div></section>`;
   }
@@ -328,7 +328,7 @@
 
   // ————————— Preguntas frecuentes por categoría —————————
   const FAQ = {
-    _: [['¿Cómo llega el pedido?', 'Como cualquier compra online: envuelto en negro, con la etiqueta del courier y a nombre de una empresa. Nada dice Desvelo ni lo que hay dentro. Ni el conserje se entera, y mira que el conserje se entera de todo.'], ['¿Qué aparece en el cobro?', 'El cobro no detalla qué compraste.']],
+    _: [['¿Cómo llega el pedido?', 'Como cualquier compra online: envuelto en negro, con la etiqueta del courier y a nombre de una empresa. Nada dice Duraznito ni lo que hay dentro. Ni el conserje se entera, y mira que el conserje se entera de todo.'], ['¿Qué aparece en el cobro?', 'El cobro no detalla qué compraste.']],
     vibradores: [['¿Hace ruido?', 'Están pensados para ser discretos; en la intensidad baja casi no se escuchan.'], ['¿Qué lubricante uso?', 'Siempre a base de agua: los de silicona dañan la superficie del juguete.']],
     consoladores: [['¿Cómo se limpia el vidrio?', 'Con agua tibia y jabón neutro. Puedes entibiarlo o enfriarlo en agua antes de usarlo.']],
     'para-el': [['¿Cómo se lava por dentro?', 'Con agua tibia, sin jabones fuertes, y déjalo secar abierto antes de guardarlo.']],
@@ -427,7 +427,7 @@
       $('[data-titulo]', raiz).textContent = t;
       $('[data-intro]', raiz).textContent = intro;
       $('[data-miga]', raiz).textContent = t.replace(/\.$/, '').replace(/^./, (x) => x.toUpperCase());
-      document.title = `${$('[data-miga]', raiz).textContent} · Desvelo`;
+      document.title = `${$('[data-miga]', raiz).textContent} · Duraznito`;
       $('[data-n]', raiz).innerHTML = `<b>${res.length}</b> producto${res.length === 1 ? '' : 's'}`;
       const chips = [...e.tipo.map((k) => ['tipo', k, tipos[k]]), ...e.c.map((k) => ['c', k, categorias[k].nombre]), ...e.para.map((k) => ['para', k, PARA[k]]), ...e.precio.map((k) => ['precio', k, PRECIOS[k][0]]), ...(e.primera ? [['extra', 'primera', 'Primera vez']] : []), ...(e.disp ? [['extra', 'disp', 'Disponibles']] : []), ...(e.q ? [['q', '', `«${e.q}»`]] : [])];
       $('[data-activos]', raiz).innerHTML = chips.map(([f, v, n]) => `<button class="chip-activo" type="button" data-quitar="${f}" data-v="${v}">${n}${icono('i-cerrar')}</button>`).join('') + (chips.length > 1 ? '<button class="limpiar" type="button" data-limpiar>Limpiar todo</button>' : '');

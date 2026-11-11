@@ -1,4 +1,4 @@
-// Desvelo · guion visual v3 — interacción del laboratorio (sin dependencias)
+// Duraznito · guion visual v3 — interacción del laboratorio (sin dependencias)
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
