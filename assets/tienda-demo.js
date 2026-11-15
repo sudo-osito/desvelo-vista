@@ -198,10 +198,10 @@
       const o = modo === 'dos' ? otra() : null;
       const prendas = cantidad + (o ? 1 : 0);
       let len = p.precio * cantidad + (o ? +o.dataset.precio : 0);
-      if (esLen && promo && prendas >= promo.minimo) len *= 1 - promo.descuento;
+      if (esLen && promo && prendas >= promo.minimo) len = Math.floor((len * (1 - promo.descuento) + 10) / 1000) * 1000 - 10;   // precio terminado en 990
       const total = len + marcados().reduce((s, i) => s + +i.dataset.precio, 0);
       const t = $('[data-total]', raiz); if (t) t.textContent = D.plata(total);
-      const dp = $('[data-dos-precio]', raiz); if (dp && otra()) { const par = p.precio + +otra().dataset.precio; dp.textContent = D.plata(par * (1 - promo.descuento)); $('[data-dos-ahorro]', raiz).textContent = `Ahorras ${D.plata(par * promo.descuento)} (−${pctPromo}%)`; }
+      const dp = $('[data-dos-precio]', raiz); if (dp && otra()) { const par = p.precio + +otra().dataset.precio; const dos = Math.floor((par * (1 - promo.descuento) + 10) / 1000) * 1000 - 10; dp.textContent = D.plata(dos); $('[data-dos-ahorro]', raiz).textContent = `Ahorras ${D.plata(par - dos)} (−${Math.round((1 - dos / par) * 100)}%)`; }
       const seg = $('[data-segunda]', raiz); if (seg) seg.hidden = modo !== 'dos';
       const menos = raiz.querySelector('[data-cant-pdp="-1"]'); if (menos) menos.disabled = cantidad === 1;
     };
