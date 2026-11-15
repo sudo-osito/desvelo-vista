@@ -35,157 +35,223 @@
       ${n ? `<p class="product-card__nota${p.categoria === 'lenceria' || p.pack ? ' product-card__nota--oferta' : ''}">${n}</p>` : ''}${miniaturas(p)}</div></article>`;
   }
 
-  // ————————— Página de producto —————————
+  // ————————— Página de producto v2 (rediseño uxpeak, 15-nov) —————————
+  // Móvil: galería con íconos en contenedor, tarjeta que sube sobre la foto, título que pasa a la barra superior,
+  // barra inferior fija con cantidad + «Agregar a la bolsa · $total». Escritorio: galería izquierda, panel fijo derecha.
   const CFG = () => window.DesveloConfig || {};
   const entrega = () => (D.entregaHTML ? D.entregaHTML() : '');
+  // Reseñas: el JSON actual es de DEMO. No se muestran estrellas ni conteos hasta tener reseñas reales.
+  // TODO(Desvelo): poner RESENAS_REALES = true cuando desvelo-resenas-*.json traiga reseñas verificadas.
+  const RESENAS_REALES = false;
+  const COLOR_HEX = { negro: '#141213', verde: '#2F5A45', azul: '#25365F', rojo: '#9B1C2E', blanco: '#F4F1EC', rosado: '#E9B8C0', rosada: '#E9B8C0', fucsia: '#C2185B', morado: '#5B3A8C', lila: '#B49BD6', amarilla: '#E8C547', gris: '#9A9A9A', celeste: '#9CCBE6' };
+  const ic = (id) => `<svg class="icono" aria-hidden="true"><use href="#${id}"/></svg>`;
+  // Estatus sobre el título: solo si es verdad. TODO(Desvelo): «Más vendido» cuando haya ventas reales por producto.
+  const estatus = (p) => (p.pack ? 'Pack con descuento' : p.slug === 'succionador-de-velocidad-regulable' ? 'Favorito de la casa' : p.primeraVez ? 'Ideal primera vez' : '');
 
   async function producto(raiz) {
-    const { productos, categorias, uso, cuidado } = await D.datos();
-    await cargarResenas();
+    const { productos, categorias, uso, cuidado, promo } = await D.datos();
+    const FICHAS = await fetch(`${D.BASE}desvelo-lenceria-fichas.json?v=${D.V}`).then((r) => r.json()).catch(() => ({}));
+    if (RESENAS_REALES) await cargarResenas();
     const p = productos.find((x) => x.slug === params.get('p')) || productos.find((x) => x.slug === 'succionador-de-velocidad-regulable');
     const cat = categorias[p.categoria];
+    const esLen = p.categoria === 'lenceria';
+    const fi = FICHAS[p.slug] || null;
     const comps = (p.pack ? [] : p.complementos).map((s) => productos.find((x) => x.slug === s)).filter(Boolean);
     const relacionados = productos.filter((x) => x.categoria === p.categoria && x.slug !== p.slug).sort((a, b) => (a.stock.estado === 'agotado') - (b.stock.estado === 'agotado') || (b.galeria.length > 0) - (a.galeria.length > 0) || b.precio - a.precio).slice(0, 4);
     const agotado = p.stock.estado === 'agotado';
     document.title = `${p.nombre} · Desvelo`;
-    const galeria = p.galeria.length ? p.galeria : [null];
-    const varias = galeria.length > 1;
-    const stockTxt = { pocos: `Quedan ${p.stock.unidades} unidades`, consultar: 'Confirmamos stock antes de despachar', agotado: 'Agotado por ahora' }[p.stock.estado];
+    document.body.classList.add('con-pdp2');
+
+    // Fotos: estudio sobre blanco si existen; si no, las de siempre
+    const fotos = (fi && fi.fotos.length ? fi.fotos : p.galeria).map((g) => `${D.BASE}desvelo-${g}.jpg`);
+    const varias = fotos.length > 1;
+    // Colores: muestras visibles (lencería con su tono; juguetes con su foto)
+    const colores = fi && fi.colores.length ? fi.colores.map((c) => ({ nombre: c.nombre, hex: c.hex, foto: c.foto }))
+      : (p.variantes || []).map((v) => ({ nombre: v.nombre, hex: COLOR_HEX[v.codigo.split('-')[0]] || null, img: `${D.BASE}desvelo-${v.foto}.jpg`, foto: p.galeria.indexOf(v.foto), codigo: v.codigo }));
+    const tallas = esLen ? (fi ? fi.tallas : ['S', 'M', 'L', 'XL'].map((t) => ({ t, hay: true }))) : [];
+    const tallaInicial = (tallas.find((t) => t.t === 'M' && t.hay) || tallas.find((t) => t.hay) || {}).t;
+    const tallaUnica = tallas.length === 1 && tallas[0].t === 'Única';
+    // «Lleva 2 prendas» (promo real de la tienda) como tarjeta de selección
+    const otrasLen = esLen && promo ? productos.filter((x) => x.categoria === 'lenceria' && x.slug !== p.slug && x.stock.estado !== 'agotado').sort((a, b) => a.precio - b.precio) : [];
+    const pctPromo = promo ? Math.round(promo.descuento * 100) : 0;
+    const est = estatus(p);
+
+    const guia = esLen ? `<details class="p2-guia"><summary>Guía de tallas${ic('i-next')}</summary><div class="p2-guia__c">
+      ${fi && fi.tabla ? `<div class="p2-tabla-envoltura"><table class="p2-tabla"><thead><tr>${fi.tabla.columnas.map((c) => `<th>${esc(c.charAt(0).toUpperCase() + c.slice(1))}</th>`).join('')}</tr></thead><tbody>${fi.tabla.filas.map((f) => `<tr>${f.map((v) => `<td>${esc(String(v).replace('.', ','))}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="p2-nota">Medidas en centímetros, publicadas por el fabricante del modelo. Es talla asiática: si estás entre dos tallas, elige la mayor.</p>`
+      : '<p class="p2-nota"><b>Talla asiática:</b> te recomendamos pedir una talla más.</p>'}
+    </div></details>` : '';
 
     raiz.innerHTML = `
+      <div class="p2-top" data-p2-top aria-hidden="true"><a class="p2-ico" href="coleccion.html?c=${p.categoria}" tabindex="-1" aria-label="Volver">${ic('i-prev')}</a><span class="p2-top__t">${esc(p.nombre)}</span><b class="p2-top__p">${D.plata(p.precio)}</b></div>
       <nav class="migas page-width" aria-label="Migas"><a href="index.html">Inicio</a><span aria-hidden="true">/</span><a href="coleccion.html?c=${p.categoria}">${cat.nombre}</a><span aria-hidden="true">/</span><span>${esc(p.nombre)}</span></nav>
-      <div class="pdp page-width">
-        <div class="galeria">
-          <div class="galeria__principal${p.pack ? " galeria--pack" : ""}" data-lupa>${p.categoria === 'lenceria' ? `<span class="galeria__pista-lupa vidrio" aria-hidden="true">${icono('i-buscar')}<span>Acerca el mouse: mira el encaje</span></span>` : ''}
-
-            <div class="galeria__pista" data-pista>${galeria.map((g, i) => `<figure${g && g.startsWith('catalogo-') ? ' class="galeria__real"' : ''}>${g ? `<img src="${D.BASE}desvelo-${g}.jpg" alt="${esc(p.nombre)} · foto ${i + 1}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}>` : enCamino()}${g && g.startsWith('catalogo-') ? '<span class="galeria__real-txt vidrio">Foto del proveedor</span>' : ''}</figure>`).join('')}</div>
-            ${varias ? `<button class="galeria__flecha galeria__flecha--prev vidrio" type="button" data-ir="-1" aria-label="Foto anterior">${icono('i-prev')}</button><button class="galeria__flecha galeria__flecha--next vidrio" type="button" data-ir="1" aria-label="Foto siguiente">${icono('i-next')}</button><span class="galeria__puntos vidrio" aria-hidden="true">${galeria.map((_, i) => `<i class="${i ? '' : 'is-activo'}"></i>`).join('')}</span>` : ''}
-          </div>
-          ${varias ? `<div class="galeria__miniaturas">${galeria.map((g, i) => `<button class="galeria__mini" type="button" data-mini="${i}" aria-label="Ver foto ${i + 1}" ${i ? '' : 'aria-current="true"'}><img src="${D.BASE}desvelo-${g}.jpg" alt=""></button>`).join('')}</div>` : ''}
-        </div>
-
-        <div class="compra">
-          <div class="compra__cabeza">
-            <a class="antetitulo" href="coleccion.html?c=${p.categoria}">${cat.nombre}</a>
-            <div class="compra__titulo"><h1 class="compra__nombre">${esc(p.nombre)}</h1>${D.guardarHTML(p.slug, p.nombre, true)}</div>
-            ${RES.productos[p.slug] ? `<a class="calificacion" href="#resenas">${estrellas(RES.productos[p.slug].promedio)}<b>${String(RES.productos[p.slug].promedio).replace('.', ',')}</b>· ${RES.productos[p.slug].total} reseñas</a>` : ''}
-            <p class="compra__precio${p.precioAntes ? ' compra__precio--oferta' : ''}">${D.plata(p.precio)}${p.precioAntes ? `<span class="precio-antes">${D.plata(p.precioAntes)}</span><span class="descuento">−${pct(p)} %</span>` : ''}${p.pack ? `<span class="compra__ahorro">Ahorras ${D.plata(p.ahorro)} · por separado ${D.plata(p.precioSuelto)}</span>` : ''}</p>
-            ${stockTxt ? `<p class="stock stock--${p.stock.estado}">${stockTxt}</p>` : ''}
-            <p class="bajada">${esc(p.descripcion || p.bajada)}</p>
-            ${p.variantes ? `<div class="variantes" role="radiogroup" aria-label="Color"><p class="tallas__titulo">Color <span data-variante-nombre>${esc(p.variantes[0].nombre)}</span></p><div class="variantes__lista">${p.variantes.map((v, i) => `<button type="button" class="variante" role="radio" aria-checked="${i === 0}" aria-label="${esc(v.nombre)}" title="${esc(v.nombre)}" data-color="${esc(v.nombre)}" data-indice="${i}"><img src="${D.BASE}desvelo-${v.foto}.jpg" alt=""></button>`).join('')}</div></div>` : ''}
-            ${p.categoria === 'lenceria' ? `<div class="tallas" role="radiogroup" aria-label="Talla"><p class="tallas__titulo">Talla <button type="button" class="que-talla" data-que-talla data-tipo="${p.tipo || ''}">¿Qué talla soy?</button></p>${['S', 'M', 'L', 'XL'].map((t) => `<button type="button" class="talla" role="radio" aria-checked="${t === 'M'}" data-talla="${t}">${t}</button>`).join('')}</div>
-            ${D.lleva2HTML(p.precio, Math.min(...productos.filter((x) => x.categoria === 'lenceria' && x.slug !== p.slug).map((x) => x.precio)), 15, 2, p.slug)}` : ''}
-            <div class="ideal">${[...p.para.map((x) => ({ ella: 'Para ella', el: 'Para él', pareja: 'Para parejas' }[x])), ...(p.primeraVez ? ['Ideal primera vez'] : [])].map((t) => `<span>${t}</span>`).join('')}</div>
-          </div>
-
-          ${p.pack ? `<div class="incluye"><p class="completa__titulo">Este pack incluye <span>${p.pack.length} productos</span></p>${p.pack.map((s) => productos.find((x) => x.slug === s)).filter(Boolean).map((x) => `<a class="incluye__item" href="producto.html?p=${x.slug}"><span class="complemento__foto">${foto(x) ? `<img src="${foto(x)}" alt="">` : enCamino()}</span><span class="complemento__nombre">${esc(x.nombre)}<small>${esc(x.bajada)}</small></span><span class="complemento__precio">${D.plata(x.precio)}</span></a>`).join('')}</div>` : ''}
-
-          ${comps.length && !agotado ? `<div class="completa" data-completa>
-            <p class="completa__titulo">Completa tu pedido <span>llega en la misma caja</span></p>
-            ${comps.map((c) => `<label class="complemento"><input type="checkbox" value="${c.slug}" data-precio="${c.precio}">
-              <span class="complemento__foto">${foto(c) ? `<img src="${foto(c)}" alt="">` : enCamino()}</span>
-              <span class="complemento__nombre">${esc(c.nombre)}<small>${esc(c.bajada)}</small></span>
-              <span class="complemento__precio">+ ${D.plata(c.precio)}</span></label>`).join('')}
-          </div>` : ''}
-
-          ${agotado ? '' : D.regaloHTML()}
-          ${agotado ? '<div class="compra__acciones"><button class="boton" type="button" data-avisame>Avísame cuando vuelva</button></div>' : `
-          <div class="compra__acciones">
-            <p class="compra__total-linea"><span data-total-txt>Total</span><b data-total>${D.plata(p.precio)}</b></p>
-            <div class="compra__fila">
-              <div class="cantidad" role="group" aria-label="Cantidad"><button type="button" data-cant-pdp="-1" aria-label="Uno menos">−</button><output data-cantidad>1</output><button type="button" data-cant-pdp="1" aria-label="Uno más">+</button></div>
-              <button class="boton" type="button" data-comprar="ahora">Comprar ahora</button>
+      <div class="pdp2 page-width">
+        <section class="p2-gal" aria-label="Fotos de ${esc(p.nombre)}">
+          <div class="p2-gal__marco">
+            <div class="p2-gal__pista" data-pista tabindex="0">${fotos.length ? fotos.map((f, i) => `<figure><img src="${f}" width="1200" height="1200" alt="${esc(p.nombre)} · foto ${i + 1} de ${fotos.length}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'}></figure>`).join('') : `<figure>${enCamino()}</figure>`}</div>
+            <div class="p2-gal__iconos">
+              <a class="p2-ico" href="coleccion.html?c=${p.categoria}" data-atras aria-label="Volver">${ic('i-prev')}</a>
+              <span class="p2-gal__der"><button class="p2-ico" type="button" data-compartir aria-label="Compartir"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M7.5 8 12 3.5 16.5 8M5.5 13v5a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5"/></svg></button>${D.guardarHTML(p.slug, p.nombre).replace('class="guardar', 'class="p2-ico guardar')}</span>
             </div>
-            <button class="boton boton--claro" type="button" data-comprar="bolsa">Agregar a la bolsa</button>
-          </div>`}
+            ${varias ? `<div class="p2-gal__puntos" role="tablist" aria-label="Fotos">${fotos.map((_, i) => `<button type="button" role="tab" data-ir="${i}" aria-label="Foto ${i + 1}"${i ? '' : ' class="is-on" aria-selected="true"'}></button>`).join('')}</div>
+            <button class="p2-ico p2-gal__flecha p2-gal__flecha--prev" type="button" data-paso="-1" aria-label="Foto anterior">${ic('i-prev')}</button><button class="p2-ico p2-gal__flecha p2-gal__flecha--next" type="button" data-paso="1" aria-label="Foto siguiente">${ic('i-next')}</button>` : ''}
+          </div>
+          ${varias ? `<div class="p2-gal__mini">${fotos.map((f, i) => `<button type="button" data-ir="${i}" aria-label="Ver foto ${i + 1}"${i ? '' : ' aria-current="true"'}><img src="${f}" alt="" loading="lazy"></button>`).join('')}</div>` : ''}
+        </section>
 
-          ${agotado ? '' : entrega()}
+        <div class="p2-tarjeta">
+          <div class="p2-panel">
+            <div class="p2-tirador" aria-hidden="true"></div>
+            ${est ? `<p class="p2-estatus">${esc(est)}</p>` : ''}
+            <div class="p2-etiquetas"><a class="p2-eyebrow" href="coleccion.html?c=${p.categoria}">${esc(cat.nombre)}</a>${p.precioAntes ? `<span class="p2-badge">−${pct(p)}%</span>` : ''}</div>
+            <div class="p2-cabeza">
+              <h1 class="p2-titulo" data-titulo>${esc(p.nombre)}</h1>
+              <p class="p2-precio">${p.precioAntes ? `<s>${D.plata(p.precioAntes)}</s>` : p.pack ? `<s>${D.plata(p.precioSuelto)}</s>` : ''}<b>${D.plata(p.precio)}</b></p>
+            </div>
+            <p class="p2-confianza">${ic('i-caja')}Envío discreto en caja lisa</p>
+            ${RESENAS_REALES && RES.productos[p.slug] ? `<a class="p2-prueba" href="#resenas">${estrellas(RES.productos[p.slug].promedio)}<b>${String(RES.productos[p.slug].promedio).replace('.', ',')}</b><span>· ${RES.productos[p.slug].total} reseñas</span></a>` : '<p class="p2-prueba" hidden></p>'}
+            ${p.pack ? `<p class="p2-ahorro">Ahorras ${D.plata(p.ahorro)} vs. comprar por separado</p>` : ''}
+            <p class="p2-bajada">${esc(p.bajada || p.descripcion)}</p>
 
-          <div class="compra__confianza">
-            <span>${icono('i-caja')}Empaque discreto</span><span>${icono('i-envio')}Envíos a todo Chile</span><span>${icono('i-pago')}Pago seguro</span>
+            ${colores.length > 1 ? `<div class="p2-grupo"><p class="p2-grupo__t">Color <span data-color-nombre>${esc(colores[0].nombre)}</span></p>
+              <div class="p2-muestras" role="radiogroup" aria-label="Color">${colores.map((c, i) => `<button type="button" class="p2-muestra${c.hex ? '' : ' p2-muestra--foto'}" role="radio" aria-checked="${i === 0}" aria-label="${esc(c.nombre)}" data-tip="${esc(c.nombre)}" data-color="${esc(c.nombre)}" data-foto="${c.foto}"${c.codigo ? ` data-codigo="${c.codigo}"` : ''}>${c.hex ? `<i style="--c:${c.hex}"></i>` : `<img src="${c.img}" alt="">`}</button>`).join('')}</div></div>` : ''}
+
+            ${tallas.length ? `<div class="p2-grupo"><p class="p2-grupo__t">Talla ${tallaUnica ? '<span>Única</span>' : `<span data-talla-nombre>${esc(tallaInicial || '')}</span>`}</p>
+              <div class="p2-tallas" role="radiogroup" aria-label="Talla">${tallas.map((t) => `<button type="button" class="p2-talla" role="radio" aria-checked="${t.t === tallaInicial}" data-talla="${esc(t.t)}" data-tip="${!t.hay ? 'Agotada por ahora' : tallaUnica ? 'Talla única' : 'Si estás entre dos tallas, elige la mayor'}"${t.hay ? '' : ' disabled'}>${esc(t.t)}</button>`).join('')}</div>
+              ${guia}</div>` : ''}
+
+            ${otrasLen.length && !agotado ? `<div class="p2-sel" role="radiogroup" aria-label="Cuántas prendas">
+              <button type="button" class="p2-sel__op" role="radio" aria-checked="false" data-modo="solo"><b>Solo esta prenda</b><span class="p2-sel__p">${D.plata(p.precio)}</span><span class="p2-sel__d">Sin descuento</span></button>
+              <button type="button" class="p2-sel__op p2-sel__op--promo" role="radio" aria-checked="true" data-modo="dos" data-tip="${esc(promo.texto)}"><span class="p2-sel__tag">Más conveniente</span><b>Lleva 2 prendas</b><span class="p2-sel__p" data-dos-precio></span><span class="p2-sel__d" data-dos-ahorro>${pctPromo}% menos en las dos</span></button>
+            </div>
+            <div class="p2-segunda" data-segunda><p class="p2-grupo__t">Elige la segunda prenda <span>en tu misma talla</span></p>
+              <div class="p2-segunda__fila">${otrasLen.slice(0, 6).map((x, i) => `<button type="button" class="p2-prenda" role="radio" aria-checked="${i === 0}" data-otra="${x.slug}" data-precio="${x.precio}"><img src="${FICHAS[x.slug]?.fotos[0] ? `${D.BASE}desvelo-${FICHAS[x.slug].fotos[0]}.jpg` : foto(x)}" alt="" loading="lazy"><span>${esc(x.nombre)}</span><b>${D.plata(x.precio)}</b></button>`).join('')}</div></div>` : ''}
+
+            ${stockLinea(p)}
+
+            ${agotado ? '<div class="p2-compra"><button class="boton p2-agregar" type="button" data-avisame>Avísame cuando vuelva</button></div>' : `
+            <div class="p2-compra" data-compra>
+              <div class="p2-cant" role="group" aria-label="Cantidad"><button type="button" data-cant-pdp="-1" aria-label="Uno menos">−</button><output data-cantidad aria-live="polite">1</output><button type="button" data-cant-pdp="1" aria-label="Uno más">+</button></div>
+              <button class="p2-agregar" type="button" data-comprar="bolsa">Agregar a la bolsa <span aria-hidden="true">·</span> <span data-total>${D.plata(p.precio)}</span></button>
+            </div>`}
+            <ul class="p2-garantias">
+              <li>${ic('i-caja')}Envío discreto en caja lisa</li>
+              <li>${ic('i-pago')}Pago seguro</li>
+              <li>${ic('i-envio')}Despacho a todo Chile</li>
+            </ul>
+
           </div>
 
-          <div class="acordeon">
-            ${p.elegimos ? `<div class="elegimos">${D.MONO}<p><b>Por qué lo elegimos</b>${esc(p.elegimos)}</p></div>` : ''}
-            <details><summary>Cuidado</summary><div class="acordeon__cuerpo"><p>${cuidado}</p></div></details>
-            <details><summary>Cómo llega</summary><div class="acordeon__cuerpo"><p>Como cualquier compra online: envuelto en negro, con la etiqueta del courier y a nombre de una empresa. Nada dice Desvelo ni lo que hay dentro. Ni el conserje se entera, y mira que el conserje se entera de todo. Despachamos a todo Chile y el costo se calcula al pagar.</p></div></details>
-            <details><summary>Ficha</summary><div class="acordeon__cuerpo"><dl><dt>Categoría</dt><dd>${cat.nombre}</dd><dt>Código</dt><dd>${p.sku}</dd><dt>Material y medidas</dt><dd>Se confirman con la ficha del proveedor antes de publicar.</dd></dl></div></details>
+          <div class="p2-detalles">
+            <div class="p2-texto"><p>${esc(p.descripcion || p.bajada)}</p></div>
+            ${comps.length && !agotado ? `<div class="completa p2-completa" data-completa>
+              <p class="completa__titulo">Completa tu pedido <span>llega en la misma caja</span></p>
+              ${comps.map((c) => `<label class="complemento"><input type="checkbox" value="${c.slug}" data-precio="${c.precio}">
+                <span class="complemento__foto">${foto(c) ? `<img src="${foto(c)}" alt="">` : enCamino()}</span>
+                <span class="complemento__nombre">${esc(c.nombre)}<small>${esc(c.bajada)}</small></span>
+                <span class="complemento__precio">+ ${D.plata(c.precio)}</span></label>`).join('')}
+            </div>` : ''}
+            ${agotado ? '' : D.regaloHTML()}
+            ${p.pack ? `<div class="incluye"><p class="completa__titulo">Este pack incluye <span>${p.pack.length} productos</span></p>${p.pack.map((s) => productos.find((x) => x.slug === s)).filter(Boolean).map((x) => `<a class="incluye__item" href="producto.html?p=${x.slug}"><span class="complemento__foto">${foto(x) ? `<img src="${foto(x)}" alt="">` : enCamino()}</span><span class="complemento__nombre">${esc(x.nombre)}<small>${esc(x.bajada)}</small></span><span class="complemento__precio">${D.plata(x.precio)}</span></a>`).join('')}</div>` : ''}
+            ${agotado ? '' : entrega()}
+            <div class="acordeon">
+              ${p.elegimos ? `<div class="elegimos">${D.MONO}<p><b>Por qué lo elegimos</b>${esc(p.elegimos)}</p></div>` : ''}
+              <details><summary>Cuidado</summary><div class="acordeon__cuerpo"><p>${cuidado}</p></div></details>
+              <details><summary>Cómo llega</summary><div class="acordeon__cuerpo"><p>Como cualquier compra online: envuelto en negro, con la etiqueta del courier y a nombre de una empresa. Nada dice Desvelo ni lo que hay dentro. Ni el conserje se entera, y mira que el conserje se entera de todo. Despachamos a todo Chile y el costo se calcula al pagar.</p></div></details>
+              <details><summary>Ficha</summary><div class="acordeon__cuerpo"><dl><dt>Categoría</dt><dd>${cat.nombre}</dd><dt>Código</dt><dd>${p.sku}</dd><dt>Material y medidas</dt><dd>Se confirman con la ficha del proveedor antes de publicar.</dd></dl></div></details>
+            </div>
+            <div class="consulta"><span><b>¿Dudas antes de comprar?</b>Te respondemos con total discreción.</span><a class="boton boton--claro" href="mailto:${CFG().contacto || 'contacto.desvelo@gmail.com'}?subject=${encodeURIComponent('Consulta: ' + p.nombre)}">Preguntar</a></div>
           </div>
-
-          <div class="consulta"><span><b>¿Dudas antes de comprar?</b>Te respondemos con total discreción.</span><a class="boton boton--claro" href="mailto:${CFG().contacto || 'contacto.desvelo@gmail.com'}?subject=${encodeURIComponent('Consulta: ' + p.nombre)}">Preguntar</a></div>
         </div>
       </div>
 
-      ${p.categoria === 'lenceria' ? '' : `<section class="seccion--compacta page-width">
+      ${esLen ? '' : `<section class="seccion--compacta page-width">
         <div class="seccion-cabeza"><div class="seccion-cabeza__textos"><p class="seccion-cabeza__que">Uso y cuidado</p><h2>Cómo usarlo y cuidarlo.</h2><p class="seccion-cabeza__porque">Tres pasos para que te dure y esté siempre listo.</p></div></div>
-        <div class="pasos pasos--foto">${(PASOS[p.categoria] || PASOS.vibradores).map(([img, titulo], k) => `<div class="paso"><img class="paso__foto" src="${D.BASE}desvelo-${img}.jpg" alt="" loading="lazy" onerror="this.remove()"><b>${titulo}</b><p>${uso[p.categoria][k] || ''}</p></div>`).join('')}</div>
+        <div class="pasos pasos--foto">${(PASOS[p.categoria] || PASOS.vibradores).map(([img, titulo], k) => `<div class="paso"><img class="paso__foto" src="${D.BASE}desvelo-${img}.jpg" alt="" loading="lazy" onerror="this.remove()"><b>${titulo}</b><p>${(uso[p.categoria] || [])[k] || ''}</p></div>`).join('')}</div>
       </section>`}
 
-      ${resenasHTML(p)}
+      ${RESENAS_REALES ? resenasHTML(p) : ''}
       ${faqHTML(p, categorias)}
       ${relacionados.length ? `<section class="seccion page-width">
         <div class="seccion-cabeza aparece"><div class="seccion-cabeza__textos"><p class="seccion-cabeza__que">${cat.nombre}</p><h2>combina con esto<span class="punto-final">.</span></h2></div><a class="ver-todo" href="coleccion.html?c=${p.categoria}">Ver todo ${icono('i-flecha')}</a></div>
         <div class="product-grid">${relacionados.map((r) => tarjeta(r, categorias)).join('')}</div>
       </section>` : ''}
-
-      <div class="barra-compra vidrio" data-barra>${foto(p) ? `<img src="${foto(p)}" alt="">` : ''}<span class="barra-compra__txt"><b>${esc(p.nombre)}</b><span>${D.plata(p.precio)}</span></span>
-        ${agotado ? '' : '<button class="boton" type="button" data-comprar="ahora">Comprar ahora</button>'}</div>
       <section class="seccion--compacta page-width" data-recientes hidden></section>`;
 
-    // Galería: flechas, miniaturas y puntos; deslizar solo en celular y solo si hay varias fotos
+    // Galería deslizable con puntos (y flechas/miniaturas en escritorio)
     const pista = $('[data-pista]', raiz);
-    if (varias && matchMedia('(max-width: 989px)').matches) pista.classList.add('is-deslizable');
     let actual = 0;
-    const ir = (i) => {
-      actual = (i + galeria.length) % galeria.length;
-      pista.scrollTo({ left: pista.clientWidth * actual, behavior: 'smooth' });
-      raiz.querySelectorAll('[data-mini]').forEach((b, k) => b.setAttribute('aria-current', String(k === actual)));
-      raiz.querySelectorAll('.galeria__puntos i').forEach((b, k) => b.classList.toggle('is-activo', k === actual));
+    const marcar = (i) => {
+      actual = i;
+      raiz.querySelectorAll('.p2-gal__puntos [data-ir]').forEach((b, k) => { b.classList.toggle('is-on', k === i); b.setAttribute('aria-selected', String(k === i)); });
+      raiz.querySelectorAll('.p2-gal__mini [data-ir]').forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
     };
-    raiz.querySelectorAll('[data-mini]').forEach((b) => b.addEventListener('click', () => ir(+b.dataset.mini)));
-    raiz.querySelectorAll('[data-ir]').forEach((b) => b.addEventListener('click', () => ir(actual + +b.dataset.ir)));
-    pista.addEventListener('scroll', () => { const i = Math.round(pista.scrollLeft / pista.clientWidth); if (i !== actual) { actual = i; raiz.querySelectorAll('.galeria__puntos i').forEach((b, k) => b.classList.toggle('is-activo', k === i)); } }, { passive: true });
+    const ir = (i) => { if (!fotos.length || i < 0) return; i = (i + fotos.length) % fotos.length; pista.scrollTo({ left: pista.clientWidth * i, behavior: 'smooth' }); marcar(i); };
+    raiz.querySelectorAll('[data-ir]').forEach((b) => b.addEventListener('click', () => ir(+b.dataset.ir)));
+    raiz.querySelectorAll('[data-paso]').forEach((b) => b.addEventListener('click', () => ir(actual + +b.dataset.paso)));
+    pista.addEventListener('scroll', () => { const i = Math.round(pista.scrollLeft / pista.clientWidth); if (i !== actual) marcar(i); }, { passive: true });
 
-    // Cantidad + complementos → total
-    let cantidad = 1;
+    // Selección: color, talla, «solo» vs «2 prendas», cantidad y complementos → total dentro del botón
+    let cantidad = 1, modo = otrasLen.length && !agotado ? 'dos' : 'solo';
+    const otra = () => raiz.querySelector('[data-otra][aria-checked="true"]');
     const marcados = () => [...raiz.querySelectorAll('[data-completa] input:checked')];
     const pintar = () => {
-      const total = p.precio * cantidad + marcados().reduce((s, i) => s + +i.dataset.precio, 0);
-      const n = cantidad + marcados().length;
+      const o = modo === 'dos' ? otra() : null;
+      const prendas = cantidad + (o ? 1 : 0);
+      let len = p.precio * cantidad + (o ? +o.dataset.precio : 0);
+      if (esLen && promo && prendas >= promo.minimo) len = Math.floor((len * (1 - promo.descuento) + 10) / 1000) * 1000 - 10;   // precio terminado en 990
+      const total = len + marcados().reduce((s, i) => s + +i.dataset.precio, 0);
       const t = $('[data-total]', raiz); if (t) t.textContent = D.plata(total);
-      const tt = $('[data-total-txt]', raiz); if (tt) tt.textContent = n > 1 ? `Total · ${n} productos` : 'Total';
+      const dp = $('[data-dos-precio]', raiz); if (dp && otra()) { const par = p.precio + +otra().dataset.precio; const dos = Math.floor((par * (1 - promo.descuento) + 10) / 1000) * 1000 - 10; dp.textContent = D.plata(dos); $('[data-dos-ahorro]', raiz).textContent = `Ahorras ${D.plata(par - dos)} (−${Math.round((1 - dos / par) * 100)}%)`; }
+      const seg = $('[data-segunda]', raiz); if (seg) seg.hidden = modo !== 'dos';
+      const menos = raiz.querySelector('[data-cant-pdp="-1"]'); if (menos) menos.disabled = cantidad === 1;
     };
+    raiz.addEventListener('click', (e) => {
+      const tip = e.target.closest('[data-tip]');
+      if (tip) { tip.classList.add('tip-on'); clearTimeout(tip._t); tip._t = setTimeout(() => tip.classList.remove('tip-on'), 1800); }
+      const m = e.target.closest('.p2-muestra');
+      if (m) { raiz.querySelectorAll('.p2-muestra').forEach((b) => b.setAttribute('aria-checked', String(b === m))); $('[data-color-nombre]', raiz).textContent = m.dataset.color; ir(+m.dataset.foto); }
+      const t = e.target.closest('.p2-talla');
+      if (t && !t.disabled) { raiz.querySelectorAll('.p2-talla').forEach((b) => b.setAttribute('aria-checked', String(b === t))); const n = $('[data-talla-nombre]', raiz); if (n) n.textContent = t.dataset.talla; }
+      const op = e.target.closest('[data-modo]');
+      if (op) { modo = op.dataset.modo; raiz.querySelectorAll('[data-modo]').forEach((b) => b.setAttribute('aria-checked', String(b === op))); pintar(); }
+      const pr = e.target.closest('[data-otra]');
+      if (pr) { raiz.querySelectorAll('[data-otra]').forEach((b) => b.setAttribute('aria-checked', String(b === pr))); pintar(); }
+    });
     raiz.querySelectorAll('[data-cant-pdp]').forEach((b) => b.addEventListener('click', () => { cantidad = Math.max(1, Math.min(9, cantidad + +b.dataset.cantPdp)); $('[data-cantidad]', raiz).textContent = cantidad; pintar(); }));
     raiz.querySelector('[data-completa]')?.addEventListener('change', pintar);
+    pintar();
+
     raiz.querySelectorAll('[data-comprar]').forEach((b) => b.addEventListener('click', async () => {
-      const talla = raiz.querySelector('.talla[aria-checked="true"]')?.dataset.talla;
+      const talla = raiz.querySelector('.p2-talla[aria-checked="true"]')?.dataset.talla;
       const prop = D.propiedadesRegalo(raiz);
-      const color = raiz.querySelector('.variante[aria-checked="true"]')?.dataset.color;
-      const items = [{ slug: p.slug, cantidad, ...(talla ? { talla } : {}), ...(color ? { color } : {}), ...(prop ? { properties: prop } : {}) }, ...marcados().map((i) => ({ slug: i.value }))];
+      const color = raiz.querySelector('.p2-muestra[aria-checked="true"]')?.dataset.color;
+      const o = modo === 'dos' ? otra() : null;
+      const items = [{ slug: p.slug, cantidad, ...(talla ? { talla } : {}), ...(color ? { color } : {}), ...(prop ? { properties: prop } : {}) }, ...(o ? [{ slug: o.dataset.otra, cantidad: 1, ...(talla ? { talla } : {}) }] : []), ...marcados().map((i) => ({ slug: i.value }))];
       const original = b.innerHTML;
-      b.innerHTML = `<svg class="gv-loader gv-loader--chico icono" viewBox="-60.8 -678 689.1 689.1" aria-hidden="true"><use href="${D.BASE}desvelo-sprite.svg?v=dpunto#d" x="-60.8" y="-678" width="689.1" height="689.1"/></svg>${b.dataset.comprar === 'ahora' ? 'Un momento' : 'Agregando'}`;
+      b.innerHTML = 'Agregando…';
       await D.Bolsa.agregar(items);
       setTimeout(() => { b.innerHTML = original; D.abrirBolsa(); }, 450);
     }));
-    raiz.addEventListener('click', (e) => {
-      const vb = e.target.closest('.variante[data-indice]');
-      if (vb) { raiz.querySelectorAll('.variante').forEach((b) => b.setAttribute('aria-checked', String(b === vb))); const n = raiz.querySelector('[data-variante-nombre]'); if (n) n.textContent = vb.dataset.color; ir(+vb.dataset.indice); }
-      const t = e.target.closest('[data-talla]');
-      if (t) raiz.querySelectorAll('[data-talla]').forEach((b) => b.setAttribute('aria-checked', String(b === t)));
-    });
-    activarResenas(raiz, p);
+    raiz.querySelector('[data-avisame]')?.addEventListener('click', () => D.avisar(null, 'Te avisaremos cuando vuelva (vista previa)', false));
+    $('[data-compartir]', raiz)?.addEventListener('click', async () => { try { if (navigator.share) await navigator.share({ title: p.nombre, url: location.href }); else { await navigator.clipboard.writeText(location.href); D.avisar?.(null, 'Enlace copiado', false); } } catch (e) { /* cancelado */ } });
+    $('[data-atras]', raiz)?.addEventListener('click', (e) => { if (document.referrer.startsWith(location.origin) && history.length > 1) { e.preventDefault(); history.back(); } });
+
     D.activarFicha?.(raiz);
     // Llegó desde una miniatura de color de la tarjeta: se abre con ese color elegido
     const colorUrl = params.get('color');
-    if (colorUrl && p.variantes) { const iv = p.variantes.findIndex((v) => v.codigo === colorUrl); if (iv > 0) raiz.querySelector(`.variante[data-indice="${iv}"]`)?.click(); }
+    if (colorUrl) raiz.querySelector(`.p2-muestra[data-codigo="${colorUrl}"], .p2-muestra[data-color="${colorUrl.charAt(0).toUpperCase() + colorUrl.slice(1)}"]`)?.click();
     recientes(raiz, p, productos, categorias);
-    raiz.querySelector('[data-avisame]')?.addEventListener('click', () => D.avisar(null, 'Te avisaremos cuando vuelva (vista previa)', false));
 
-    // Barra fija: aparece cuando los botones salen de pantalla
-    const principal = raiz.querySelector('.compra__acciones'), barra = raiz.querySelector('[data-barra]');
-    new IntersectionObserver(([e]) => barra.classList.toggle('is-visible', !e.isIntersecting && e.boundingClientRect.top < 0)).observe(principal);
+    // Altura de la cabecera (la galería queda fija bajo ella en celular) y título que pasa a la barra superior
+    const cab = document.querySelector('.site-header');
+    const medir = () => document.documentElement.style.setProperty('--p2-cab', `${cab ? cab.getBoundingClientRect().bottom : 0}px`);
+    medir(); addEventListener('resize', medir);
+    const top = $('[data-p2-top]', raiz), h1 = $('[data-titulo]', raiz);
+    const revisar = () => { const on = h1.getBoundingClientRect().bottom < (cab ? cab.getBoundingClientRect().bottom : 0); top.classList.toggle('is-on', on); top.setAttribute('aria-hidden', String(!on)); };
+    addEventListener('scroll', () => { revisar(); medir(); }, { passive: true }); revisar();
     D.observarApariciones?.(raiz);
   }
+  const stockLinea = (p) => ({ pocos: `<p class="p2-stock">Quedan ${p.stock.unidades} unidades</p>`, consultar: '<p class="p2-stock p2-stock--suave">Confirmamos stock antes de despachar</p>', agotado: '<p class="p2-stock">Agotado por ahora</p>' }[p.stock.estado] || '');
 
   // ————————— Pasos «cómo empezar»: ilustración + título por categoría (el texto sale de «uso») —————————
   const PASOS = {
